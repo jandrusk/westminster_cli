@@ -51,7 +51,7 @@ def _home_banner(color: bool) -> list[str]:
     )
 
     # tagline
-    tag = "Confession of Faith · Larger & Shorter Catechisms"
+    tag = "Confession · Catechisms · Directory for Public Worship"
     lt, rt = _center(tag)
     tagline = side(lt + c(tag, MUTE) + rt)
 
@@ -91,6 +91,7 @@ def format_home(documents: tuple[Document, ...], color: bool = False) -> str:
         "  " + section("READ"),
         "    " + c("ws", OX) + " " + c("wsc 1", GOLD) + "              " + c("Shorter Catechism · question 1", MUTE),
         "    " + c("ws", OX) + " " + c("wcf 1.1", GOLD) + "            " + c("Confession · chapter 1, section 1", MUTE),
+        "    " + c("ws", OX) + " " + c("dpw 1.A.1", GOLD) + "          " + c("Directory for Public Worship", MUTE),
         "    " + c("ws", OX) + " " + c("wsc 1 --answer", GOLD) + "     " + c("Reveal only the answer", MUTE),
         "    " + c("ws", OX) + " " + c("wsc 1 -p", GOLD) + "           " + c("With Scripture proof texts", MUTE),
         "    " + c("ws", OX) + " " + c("wsc 1 -m", GOLD) + "           " + c("2025 Modern English Study Version", MUTE),
@@ -98,6 +99,7 @@ def format_home(documents: tuple[Document, ...], color: bool = False) -> str:
         "",
         "  " + section("EXPLORE"),
         "    " + c("ws", OX) + " " + c("search", GOLD) + ' "chief end"',
+        "    " + c("ws", OX) + " " + c("search --doc dpw", GOLD) + " baptism",
         "    " + c("ws", OX) + " " + c("quiz", GOLD) + " wsc 10",
         "",
         "  " + section("SYSTEM"),
@@ -123,6 +125,7 @@ def format_slash_commands(color: bool = False) -> str:
         "    " + c("/wcf 1.1", GOLD) + "            Confession section 1.1",
         "    " + c("/wsc 1", GOLD) + "              Shorter Catechism question 1",
         "    " + c("/wlc 1", GOLD) + "              Larger Catechism question 1",
+        "    " + c("/dpw 1.A.1", GOLD) + "          Directory for Public Worship",
         "    " + c("/q wsc 1", GOLD) + "            Print only a question",
         "    " + c("/a wsc 1", GOLD) + "            Print only an answer",
         "    " + c("/p wsc 1", GOLD) + "            With Scripture proof texts",
@@ -130,6 +133,7 @@ def format_slash_commands(color: bool = False) -> str:
         "",
         "  " + c("Explore", OX_B),
         "    " + c("/search", GOLD) + ' "chief end"',
+        "    " + c("/search --doc dpw", GOLD) + " baptism",
         "    " + c("/list", GOLD) + " wcf",
         "    " + c("/quiz", GOLD) + " wsc 10",
         "",

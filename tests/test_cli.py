@@ -43,6 +43,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("wsc", output)
         self.assertIn("Westminster Shorter Catechism", output)
+        self.assertIn("dpw", output)
+        self.assertIn("Directory for the Public Worship of God", output)
 
     def test_no_args_shows_terminal_home(self):
         documents = load_documents()
@@ -461,16 +463,56 @@ class CliTests(unittest.TestCase):
         self.assertEqual(exit_code, 1)
         self.assertIn("Invalid regex", err)
 
-    def test_search_argument_completion_suggests_regex(self):
+    def test_search_argument_completion_suggests_regex_and_doc(self):
         documents = load_documents()
         completer = WestminsterCompleter(documents)
         texts = [c.text for c in completer.get_completions(Document("search "), None)]
-        self.assertEqual(texts, ["--regex"])
+        self.assertEqual(texts, ["--regex", "--doc"])
+
+    def test_search_doc_completion_suggests_document_ids(self):
+        documents = load_documents()
+        completer = WestminsterCompleter(documents)
+        texts = [
+            c.text for c in completer.get_completions(Document("search --doc "), None)
+        ]
+        self.assertEqual(texts, ["wcf", "wsc", "wlc", "dpw"])
+
+    def test_search_doc_flag_limits_to_dpw(self):
+        exit_code, output, _ = self.run_cli(["search", "--doc", "dpw", "baptism"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+        self.assertNotIn("WSC", output)
+        self.assertNotIn("WCF", output)
+
+    def test_search_doc_unknown_document_errors(self):
+        exit_code, _, err = self.run_cli(["search", "--doc", "nope", "worship"])
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Unknown document: nope", err)
+
+    def test_show_dpw_section(self):
+        exit_code, output, _ = self.run_cli(["dpw", "1.A.1"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW · 1.A.1", output)
+        self.assertIn("Directory for the Public Worship of God", output)
+        self.assertIn("triune Creator", output)
+
+    def test_show_dpw_chapter(self):
+        exit_code, output, _ = self.run_cli(["dpw", "1"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW · Chapter 1", output)
+        self.assertIn("1.A.1", output)
+        self.assertIn("triune Creator", output)
+
+    def test_show_dpw_preface(self):
+        exit_code, output, _ = self.run_cli(["dpw", "preface"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Preface", output)
+        self.assertIn("common understanding", output)
 
     def test_slash_stats(self):
         exit_code, output, _ = self.run_cli(["/stats"])
         self.assertEqual(exit_code, 0)
-        self.assertIn("Documents: 3", output)
+        self.assertIn("Documents: 4", output)
 
     def test_unknown_reference_returns_error(self):
         exit_code, _, err = self.run_cli(["show", "wsc", "999"])
@@ -641,7 +683,14 @@ class CliTests(unittest.TestCase):
         documents = load_documents()
         completer = WestminsterCompleter(documents)
         texts = [c.text for c in completer.get_completions(Document("list "), None)]
-        self.assertEqual(texts, ["wcf", "wsc", "wlc"])
+        self.assertEqual(texts, ["wcf", "wsc", "wlc", "dpw"])
+
+    def test_completer_completes_dpw_references(self):
+        documents = load_documents()
+        completer = WestminsterCompleter(documents)
+        texts = [c.text for c in completer.get_completions(Document("dpw "), None)]
+        self.assertIn("preface", texts)
+        self.assertIn("1.A.1", texts)
 
     def test_completer_without_documents_ignores_arguments(self):
         completer = WestminsterCompleter()

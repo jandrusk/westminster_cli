@@ -173,12 +173,15 @@ class FormattingTests(unittest.TestCase):
         self.assertIn("W  E  S  T  M  I  N  S  T  E  R", output)
         self.assertIn("2 documents", output)
         self.assertIn("3 entries", output)
+        self.assertIn("Directory for Public Worship", output)
         self.assertIn("ws>", output)
 
     def test_format_slash_commands_smoke(self):
         output = format_slash_commands()
         self.assertIn("SLASH COMMANDS", output)
         self.assertIn("/wcf 1", output)
+        self.assertIn("/dpw 1.A.1", output)
+        self.assertIn("/search --doc dpw", output)
         self.assertIn("/stats", output)
 
     def test_format_proofs_lists_letters_and_references(self):

@@ -34,7 +34,7 @@ from .formatting import (
 )
 
 
-DOCUMENT_IDS = {"wcf", "wlc", "wsc"}
+DOCUMENT_IDS = {"wcf", "wlc", "wsc", "dpw"}
 # prompt_toolkit's FileHistory and readline write incompatible formats;
 # sharing one file makes each rewrite the other's entries (with re-escaping),
 # growing the file without bound. Keep them strictly separate.
@@ -57,6 +57,7 @@ COMMAND_COMPLETIONS = (
     CommandCompletion("/wcf ", "Show WCF chapter or section"),
     CommandCompletion("/wsc ", "Show Shorter Catechism question"),
     CommandCompletion("/wlc ", "Show Larger Catechism question"),
+    CommandCompletion("/dpw ", "Show Directory for Public Worship section"),
     CommandCompletion("/q wsc ", "Print only a catechism question"),
     CommandCompletion("/a wsc ", "Print only a catechism answer"),
     CommandCompletion("/p wsc ", "Show an entry with scripture proof texts"),
@@ -71,6 +72,7 @@ COMMAND_COMPLETIONS = (
     CommandCompletion("wcf ", "Show WCF chapter or section"),
     CommandCompletion("wsc ", "Show Shorter Catechism question"),
     CommandCompletion("wlc ", "Show Larger Catechism question"),
+    CommandCompletion("dpw ", "Show Directory for Public Worship section"),
     CommandCompletion("search ", "Search the standards"),
     CommandCompletion("list ", "List documents or entries"),
     CommandCompletion("quiz ", "Flashcard quiz (reveal answers, track score)"),
@@ -128,7 +130,12 @@ class WestminsterCompleter:
 
         if first in {"q", "a", "p", "m"}:
             if word_index == 1:
-                doc_ids = ("wsc", "wlc") if first in {"q", "a"} else ("wcf", "wsc", "wlc")
+                if first in {"q", "a"}:
+                    doc_ids = ("wsc", "wlc")
+                elif first in {"p", "m"}:
+                    doc_ids = ("wcf", "wsc", "wlc")
+                else:
+                    doc_ids = tuple(DOCUMENT_IDS)
                 for doc_id in doc_ids:
                     yield from emit(doc_id, "Document")
                 return
@@ -148,18 +155,25 @@ class WestminsterCompleter:
                 if any(entry.kind == "qa" for entry in document.entries):
                     yield from emit("--question", "Only the question")
                     yield from emit("--answer", "Only the answer")
-                yield from emit("--proofs", "Show scripture proof texts")
-                yield from emit("--mesv", "Modern English Study Version")
-                yield from emit("--compare", "Constitutional and MESV together")
+                if first != "dpw":
+                    yield from emit("--proofs", "Show scripture proof texts")
+                    yield from emit("--mesv", "Modern English Study Version")
+                    yield from emit("--compare", "Constitutional and MESV together")
             return
 
         if first == "list" and word_index == 1:
-            for doc_id in ("wcf", "wsc", "wlc"):
+            for doc_id in ("wcf", "wsc", "wlc", "dpw"):
                 yield from emit(doc_id, "Document")
             return
 
         if first == "search" and word_index == 1:
             yield from emit("--regex", "Regular expression search")
+            yield from emit("--doc", "Limit search to one document")
+            return
+
+        if first == "search" and word_index == 2 and tokens[1] in {"--doc", "-d"}:
+            for doc_id in ("wcf", "wsc", "wlc", "dpw"):
+                yield from emit(doc_id, "Document")
             return
 
         if first == "quiz":
@@ -185,19 +199,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="ws",
         usage=(
-            "%(prog)s [-h] {wcf,wlc,wsc} ref | "
+            "%(prog)s [-h] {wcf,wlc,wsc,dpw} ref | "
             "{list,search,quiz,stats,sources,clear} ..."
         ),
         description="Read, search, and quiz yourself on the Westminster Standards.",
         epilog=(
             "Examples: ws wcf 1, ws wcf 1.1, ws wsc 1 --question, "
-            'ws search "chief end". The explicit form `ws show DOC REF` still works.'
+            'ws search "chief end", ws search --doc dpw baptism, '
+            "ws dpw 1.A.1. The explicit form `ws show DOC REF` still works."
         ),
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     list_parser = subparsers.add_parser("list", help="List documents or entries in a document.")
-    list_parser.add_argument("doc", nargs="?", help="Document id, such as wsc, wlc, or wcf.")
+    list_parser.add_argument(
+        "doc", nargs="?", help="Document id, such as wsc, wlc, wcf, or dpw."
+    )
 
     search_parser = subparsers.add_parser("search", help="Search across the bundled corpus.")
     search_parser.add_argument("query", nargs="+", help="Search terms.")
@@ -206,6 +223,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--regex",
         action="store_true",
         help="Treat the query as a case-insensitive regular expression.",
+    )
+    search_parser.add_argument(
+        "-d",
+        "--doc",
+        metavar="DOC",
+        help="Limit search to one document (wcf, wlc, wsc, or dpw).",
     )
 
     quiz_parser = subparsers.add_parser(
@@ -230,8 +253,8 @@ def build_show_parser() -> argparse.ArgumentParser:
         prog="ws show",
         description="Show a catechism question, confession section, or WCF chapter.",
     )
-    parser.add_argument("doc", help="Document id, such as wsc, wlc, or wcf.")
-    parser.add_argument("ref", help="Entry reference, such as 1 or 1.1.")
+    parser.add_argument("doc", help="Document id, such as wsc, wlc, wcf, or dpw.")
+    parser.add_argument("ref", help="Entry reference, such as 1, 1.1, or 1.A.1.")
     part_group = parser.add_mutually_exclusive_group()
     part_group.add_argument(
         "-q",
@@ -312,8 +335,14 @@ def dispatch(documents, raw_args: list[str], read_line=input) -> int:
 
     if args.command == "search":
         query = " ".join(args.query)
+        search_docs = documents
+        if args.doc is not None:
+            document = find_document(documents, args.doc)
+            if document is None:
+                return _error(f"Unknown document: {args.doc}")
+            search_docs = (document,)
         try:
-            results = search_entries(documents, query, regex=args.regex)
+            results = search_entries(search_docs, query, regex=args.regex)
         except ValueError as exc:
             return _error(str(exc))
         _emit(format_search_results(results, color=_color_enabled()), page=True)
@@ -627,7 +656,8 @@ def _show(documents, argv: list[str]) -> int:
         return 0
     if args.part:
         return _error("--question and --answer are only valid for catechism entries")
-    if document.id == "wcf" and args.ref.isdigit():
+    # Aggregate by chapter/section prefix: WCF "1", DPW "1" or "1.A".
+    if args.ref.isdigit() or document.id == "dpw":
         entries = find_chapter_entries(document, args.ref)
         if entries:
             _emit(

@@ -7,8 +7,9 @@ The CLI ships with the Orthodox Presbyterian Church constitutional text for:
 - Westminster Confession of Faith (`wcf`)
 - Westminster Larger Catechism (`wlc`)
 - Westminster Shorter Catechism (`wsc`)
+- Directory for the Public Worship of God (`dpw`)
 
-The data is derived from the OPC pages linked from <https://opc.org/confessions.html>. The constitutional text is the default; the 2025 Modern English Study Version (MESV) is also bundled and available via `-m`/`--mesv` and `--compare`. Note the OPC preface: the MESV is a study aid and carries no constitutional authority.
+The confession and catechisms are derived from the OPC pages linked from <https://opc.org/confessions.html>. The Directory for Public Worship is the OPC Book of Church Order text at <https://opc.org/BCO/DPW.html>. The constitutional text is the default for the confession and catechisms; the 2025 Modern English Study Version (MESV) is also bundled for those documents and available via `-m`/`--mesv` and `--compare`. Note the OPC preface: the MESV is a study aid and carries no constitutional authority.
 
 The bundled corpus lives in `src/westminster_cli/data/standards.json`. The importer in `scripts/build_opc_corpus.py` can rebuild it from downloaded OPC HTML.
 
@@ -87,7 +88,9 @@ count to shape the session, e.g. `ws quiz wlc 20` (defaults: `wsc`, 10 questions
 
 `search` matches entries containing all of the given terms; pass `-r`/`--regex`
 to treat the query as a single case-insensitive regular expression instead
-(`ws search --regex "bapti[sz]ed?"`).
+(`ws search --regex "bapti[sz]ed?"`). Limit the search to one document with
+`-d`/`--doc` (for example `ws search --doc dpw baptism` for the Directory for
+Public Worship only).
 
 Pass `-p`/`--proofs` to any reading command (`ws wsc 1 -p`, `ws wcf 1.1 -p`,
 `ws wcf 1 -p`) to show the OPC scripture proof texts beneath the text,
@@ -126,8 +129,11 @@ uv run ws wcf 1
 uv run ws wcf 1.1
 uv run ws wcf 1.1 -p
 uv run ws wcf 1.1 -m
+uv run ws dpw 1.A.1
+uv run ws dpw 1
 uv run ws search "chief end"
 uv run ws search --regex "bapti[sz]ed?"
+uv run ws search --doc dpw baptism
 uv run ws quiz
 uv run ws quiz wlc 20
 uv run ws stats
@@ -182,8 +188,13 @@ uv run python -m unittest discover -s tests
 curl -L https://opc.org/wcf.html -o /tmp/opc-wcf.html
 curl -L https://opc.org/lc.html -o /tmp/opc-lc.html
 curl -L https://opc.org/sc.html -o /tmp/opc-sc.html
-python3 scripts/build_opc_corpus.py /tmp/opc-wcf.html /tmp/opc-lc.html /tmp/opc-sc.html
+curl -L https://opc.org/BCO/DPW.html -o /tmp/opc-dpw.html
+python3 scripts/build_opc_corpus.py /tmp/opc-wcf.html /tmp/opc-lc.html /tmp/opc-sc.html /tmp/opc-dpw.html
 ```
+
+The optional fourth argument is the Directory for Public Worship HTML. After a
+full rebuild, re-run the scripture proofs and MESV scripts (they apply only to
+the confession and catechisms).
 
 ## Rebuild the scripture proofs
 

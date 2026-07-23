@@ -157,25 +157,46 @@ class CorpusTests(unittest.TestCase):
         self.assertTrue(section.text_mesv)
         self.assertEqual(section.heading_mesv, "Of the Holy Scripture")
 
-    def test_load_documents_every_entry_has_mesv_text(self):
+    def test_load_documents_every_confession_catechism_entry_has_mesv_text(self):
         documents = load_documents()
         missing = [
             f"{document.id} {entry.ref}"
             for document in documents
+            if document.id in {"wcf", "wlc", "wsc"}
             for entry in document.entries
             if not (entry.text_mesv or (entry.question_mesv and entry.answer_mesv))
         ]
         self.assertEqual(missing, [])
 
-    def test_load_documents_returns_three_consistent_documents(self):
+    def test_load_documents_returns_four_consistent_documents(self):
         documents = load_documents()
-        self.assertEqual(len(documents), 3)
-        self.assertEqual({document.id for document in documents}, {"wcf", "wlc", "wsc"})
+        self.assertEqual(len(documents), 4)
+        self.assertEqual(
+            {document.id for document in documents}, {"wcf", "wlc", "wsc", "dpw"}
+        )
         for document in documents:
             self.assertGreater(len(document.entries), 0)
             for entry in document.entries:
                 self.assertEqual(entry.doc_id, document.id)
                 self.assertEqual(entry.doc_title, document.title)
+
+    def test_load_documents_includes_directory_for_public_worship(self):
+        documents = load_documents()
+        dpw = find_document(documents, "dpw")
+        self.assertIsNotNone(dpw)
+        self.assertEqual(dpw.title, "Directory for the Public Worship of God")
+        self.assertGreater(len(dpw.entries), 50)
+        preface = find_entry(dpw, "preface")
+        self.assertIsNotNone(preface)
+        self.assertIn("common understanding", preface.text or "")
+        first = find_entry(dpw, "1.A.1")
+        self.assertIsNotNone(first)
+        self.assertIn("triune Creator", first.text or "")
+
+    def test_search_entries_can_find_dpw_content(self):
+        documents = load_documents()
+        matches = search_entries(documents, "directory public worship principles")
+        self.assertTrue(any(entry.doc_id == "dpw" for entry in matches))
 
 
 if __name__ == "__main__":
