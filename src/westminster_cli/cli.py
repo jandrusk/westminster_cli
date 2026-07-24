@@ -63,7 +63,6 @@ COMMAND_COMPLETIONS = (
     CommandCompletion("/p wsc ", "Show an entry with scripture proof texts"),
     CommandCompletion("/m wsc ", "Show an entry in modern English (2025 MESV)"),
     CommandCompletion("/search ", "Search the standards"),
-    CommandCompletion("/dpw-search ", "Search the Directory for Public Worship"),
     CommandCompletion("/list ", "List documents or entries"),
     CommandCompletion("/quiz ", "Flashcard quiz (reveal answers, track score)"),
     CommandCompletion("/stats", "Show corpus counts"),
@@ -74,7 +73,6 @@ COMMAND_COMPLETIONS = (
     CommandCompletion("wsc ", "Show Shorter Catechism question"),
     CommandCompletion("wlc ", "Show Larger Catechism question"),
     CommandCompletion("dpw ", "Show Directory for Public Worship section"),
-    CommandCompletion("dpw-search ", "Search the Directory for Public Worship"),
     CommandCompletion("search ", "Search the standards"),
     CommandCompletion("list ", "List documents or entries"),
     CommandCompletion("quiz ", "Flashcard quiz (reveal answers, track score)"),
@@ -150,13 +148,7 @@ class WestminsterCompleter:
             document = find_document(self.documents, first)
             if document is None:
                 return
-            if first == "dpw" and len(tokens) > 1 and tokens[1].casefold().startswith("search"):
-                if word_index == 2 and tokens[1].casefold() == "search":
-                    yield from emit("--regex", "Regular expression search")
-                return
             if word_index == 1:
-                if first == "dpw":
-                    yield from emit("search", "Search the Directory for Public Worship")
                 for entry in document.entries:
                     yield from emit(entry.ref, _entry_meta(entry))
             elif word_index == 2:
@@ -249,17 +241,6 @@ def build_parser() -> argparse.ArgumentParser:
         "count", nargs="?", type=int, default=10, help="Number of questions. Defaults to 10."
     )
 
-    dpw_search_parser = subparsers.add_parser(
-        "dpw-search", help="Search the Directory for Public Worship."
-    )
-    dpw_search_parser.add_argument("query", nargs="+", help="Search terms.")
-    dpw_search_parser.add_argument(
-        "-r",
-        "--regex",
-        action="store_true",
-        help="Treat the query as a case-insensitive regular expression.",
-    )
-
     subparsers.add_parser("stats", help="Show corpus counts.")
     subparsers.add_parser("sources", help="Show OPC source pages for the bundled corpus.")
     subparsers.add_parser("clear", help="Clear the terminal.")
@@ -328,13 +309,6 @@ def dispatch(documents, raw_args: list[str], read_line=input) -> int:
         return 0
     raw_args = slash_args
 
-    if (
-        raw_args
-        and raw_args[0].casefold() in DOCUMENT_IDS
-        and len(raw_args) > 1
-        and raw_args[1].casefold() == "search"
-    ):
-        return _dpw_search(documents, raw_args[2:])
     if raw_args and raw_args[0].casefold() in DOCUMENT_IDS:
         return _show(documents, raw_args)
     if raw_args and raw_args[0] == "show":
@@ -378,9 +352,6 @@ def dispatch(documents, raw_args: list[str], read_line=input) -> int:
         if args.count < 1:
             return _error("count must be at least 1")
         return run_quiz(documents, args.doc, args.count, read_line)
-
-    if args.command == "dpw-search":
-        return _dpw_search(documents, args.query + (["--regex"] if args.regex else []))
 
     if args.command == "stats":
         total = sum(len(document.entries) for document in documents)
@@ -705,31 +676,6 @@ def _show(documents, argv: list[str]) -> int:
     return _error(f"Unknown reference for {document.id}: {args.ref}")
 
 
-def _dpw_search(documents, argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(
-        prog="ws dpw-search",
-        description="Search the Directory for Public Worship of God.",
-    )
-    parser.add_argument("query", nargs="+", help="Search terms.")
-    parser.add_argument(
-        "-r",
-        "--regex",
-        action="store_true",
-        help="Treat the query as a case-insensitive regular expression.",
-    )
-    args = parser.parse_args(argv)
-    query = " ".join(args.query)
-    dpw = find_document(documents, "dpw")
-    if dpw is None:
-        return _error("Directory for Public Worship not found in corpus")
-    try:
-        results = search_entries((dpw,), query, regex=args.regex)
-    except ValueError as exc:
-        return _error(str(exc))
-    _emit(format_search_results(results, color=_color_enabled()), page=True)
-    return 0
-
-
 def _normalize_slash_args(argv: list[str]) -> list[str]:
     if not argv:
         return argv
@@ -751,6 +697,6 @@ def _normalize_slash_args(argv: list[str]) -> list[str]:
         return [*rest, "--proofs"]
     if command == "m":
         return [*rest, "--mesv"]
-    if command in {"list", "search", "dpw-search", "quiz", "stats", "sources", "clear"}:
+    if command in {"list", "search", "quiz", "stats", "sources", "clear"}:
         return [command, *rest]
     return argv
