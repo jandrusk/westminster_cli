@@ -484,6 +484,62 @@ class CliTests(unittest.TestCase):
         self.assertNotIn("WSC", output)
         self.assertNotIn("WCF", output)
 
+    def test_dpw_search_finds_content(self):
+        exit_code, output, _ = self.run_cli(["dpw-search", "baptism"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+        self.assertNotIn("WSC", output)
+        self.assertNotIn("WCF", output)
+
+    def test_dpw_search_regex(self):
+        exit_code, output, _ = self.run_cli(["dpw-search", "-r", "bapti[sz]"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+
+    def test_dpw_search_regex_short_flag(self):
+        exit_code, output, _ = self.run_cli(["dpw-search", "--regex", "worship"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+
+    def test_dpw_search_regex_invalid_pattern_errors(self):
+        exit_code, _, err = self.run_cli(["dpw-search", "--regex", "["])
+        self.assertEqual(exit_code, 1)
+        self.assertIn("Invalid regex", err)
+
+    def test_dpw_search_no_query_errors(self):
+        exit_code, _, err = self.run_cli(["dpw-search"])
+        self.assertEqual(exit_code, 2)
+        self.assertIn("required", err)
+
+    def test_dpw_search_shorthand(self):
+        exit_code, output, _ = self.run_cli(["dpw", "search", "baptism"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+        self.assertNotIn("WSC", output)
+        self.assertNotIn("WCF", output)
+
+    def test_dpw_search_shorthand_regex(self):
+        exit_code, output, _ = self.run_cli(["dpw", "search", "--regex", "worship"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+
+    def test_slash_dpw_search(self):
+        exit_code, output, _ = self.run_cli(["/dpw-search", "baptism"])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("DPW", output)
+
+    def test_dpw_search_completion_suggests_search_keyword(self):
+        documents = load_documents()
+        completer = WestminsterCompleter(documents)
+        texts = [c.text for c in completer.get_completions(Document("dpw "), None)]
+        self.assertIn("search", texts)
+
+    def test_dpw_search_completion_suggests_regex_flag(self):
+        documents = load_documents()
+        completer = WestminsterCompleter(documents)
+        texts = [c.text for c in completer.get_completions(Document("dpw search "), None)]
+        self.assertEqual(texts, ["--regex"])
+
     def test_search_doc_unknown_document_errors(self):
         exit_code, _, err = self.run_cli(["search", "--doc", "nope", "worship"])
         self.assertEqual(exit_code, 1)
